@@ -65,9 +65,9 @@
   <include file="$(find jsk_footstep_controller)/launch/hrp2jsk_footcoords.launch" />
 
   <!-- vision setting -->
-<!--  <include file="$(find hrpsys_choreonoid_tutorials)/launch/jaxon_red_vision_connect.launch" >-->
-<!--    <arg name="SIMULATOR_NAME" value="$(arg SIMULATOR_NAME)" />-->
-<!--  </include>-->
+  <include file="$(find hrpsys_choreonoid_tutorials)/launch/chidori_vision_connect.launch" >
+    <arg name="SIMULATOR_NAME" value="$(arg SIMULATOR_NAME)" />
+  </include>
 
   <!--
   <arg name="launch_multisense_local" default="false" />
