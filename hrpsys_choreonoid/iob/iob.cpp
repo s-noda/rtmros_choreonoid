@@ -16,6 +16,7 @@
 #include <rtm/idl/BasicDataTypeSkel.h>
 
 #include "RobotHardware_choreonoid.h"
+#include "ExtKalmanFilter.h"
 
 static std::vector<double> command;
 static std::vector<double> act_angle;
@@ -55,6 +56,7 @@ static std::vector<std::vector<double> > torque_queue;
 using namespace RTC;
 
 RobotHardware_choreonoid *self_ptr;
+EKFilter *ekfilter_ptr;
 
 //* *//
 static TimedDoubleSeq m_angleIn;
@@ -593,6 +595,10 @@ int open_iob(void)
     }
 
     std::cerr << "choreonoid IOB is opened" << std::endl;
+
+    ekfilter_ptr = new EKFilter();
+    ekfilter_ptr->resetKalmanFilterState();
+    ekfilter_ptr->setdt(dt);
 
     s_shm = (struct servo_shm *)set_shared_memory(5555, sizeof(struct servo_shm));
     return TRUE;
@@ -1141,5 +1147,32 @@ void write_shared_memory ()
     for(int j = 0; j < 3; j++) {
       s_shm->body_acc[i][j] = accelerometers[i][j];
     }
+  }
+
+  if(!!ekfilter_ptr) {
+    Eigen::Vector3d gyro(s_shm->body_omega[0][0],
+                         s_shm->body_omega[0][1],
+                         s_shm->body_omega[0][2]);
+    Eigen::Vector3d acc(s_shm->body_acc[0][0],
+                        s_shm->body_acc[0][1],
+                        s_shm->body_acc[0][2]);
+    Eigen::Quaternion<double> q;
+    ekfilter_ptr->main_one(q, acc, gyro);
+#if 0
+    std::cerr << "#f(" << gyro.x();
+    std::cerr << " " << gyro.y();
+    std::cerr << " " << gyro.z() << ") ";
+    std::cerr << "#f(" << acc.x();
+    std::cerr << " " << acc.y();
+    std::cerr << " " << acc.z() << ") ";
+    std::cerr << "#f(" << q.w();
+    std::cerr << " " << q.x();
+    std::cerr << " " << q.y();
+    std::cerr << " " << q.z() << ")" << std::endl;
+#endif
+    s_shm->body_posture[0][0] = q.x();
+    s_shm->body_posture[0][1] = q.y();
+    s_shm->body_posture[0][2] = q.z();
+    s_shm->body_posture[0][3] = q.w();
   }
 }
