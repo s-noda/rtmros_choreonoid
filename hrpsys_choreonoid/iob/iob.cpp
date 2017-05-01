@@ -389,7 +389,7 @@ int write_command_angles(const double *angles)
     for (int i=0; i<number_of_joints(); i++){
         command[i] = angles[i];
     }
-    iob_step = iob_nstep;
+    // iob_step = iob_nstep;
     return TRUE;
 }
 
@@ -601,6 +601,7 @@ int open_iob(void)
     ekfilter_ptr->setdt(dt);
 
     s_shm = (struct servo_shm *)set_shared_memory(5555, sizeof(struct servo_shm));
+    s_shm->frame = 0;
     return TRUE;
 }
 void iob_update(void)
@@ -711,6 +712,7 @@ void iob_update(void)
 
     //std::cerr << "tm: " << m_angleIn.tm.sec << " / " << m_angleIn.tm.nsec << std::endl; 
     write_shared_memory();
+    s_shm->frame++;
 }
 void iob_set_torque_limit(std::vector<double> &vec)
 {
@@ -785,13 +787,13 @@ static void readGainFile()
     for(int i = 0; i < dof; ++i) {
       command[i] = qold_ref[i] = qold[i] = m_angleIn.data[i];
     }
-#if 1
+
     if(!!s_shm) {
       for(int i = 0; i < dof; ++i) {
         s_shm->ref_angle[i] = command[i];
       }
     }
-#endif
+
 }
 
 int close_iob(void)
@@ -1115,6 +1117,10 @@ void *set_shared_memory(key_t _key, size_t _size)
 
 void read_shared_memory ()
 {
+  if(s_shm->cmd_lock > 0) {
+    iob_step = s_shm->cmd_lock;
+    s_shm->cmd_lock = 0;
+  }
   for(int i = 0; i < command.size(); i++) {
     command[i] = s_shm->ref_angle[i];
   }
