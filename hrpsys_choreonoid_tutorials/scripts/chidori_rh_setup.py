@@ -33,6 +33,7 @@ class CHIDORI_HrpsysConfigurator(ChoreonoidHrpsysConfigurator):
         self.Groups = [rleg_group, lleg_group]
 
     def startABSTIMP (self):
+        self.rh_svc.setServoErrorLimit('all', 0);
         self.startAutoBalancer()
         #self.ic_svc.startImpedanceController("larm")
         #self.ic_svc.startImpedanceController("rarm")
