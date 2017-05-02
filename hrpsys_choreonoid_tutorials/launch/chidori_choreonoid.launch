@@ -50,19 +50,19 @@
   </include>
   <!-- ros_bridge -->
   <rosparam command="load" file="$(arg CONTROLLER_CONFIG)" />
-  <include file="$(find hrpsys_choreonoid)/launch/ros_bridge_choreonoid.launch" >
+  <iinclude file="$(find hrpsys_choreonoid)/launch/ros_bridge_choreonoid.launch" >
     <!-- robot dependant settings -->
     <arg name="SIMULATOR_NAME" value="$(arg BRIDGE_SIMULATOR_NAME)" />
     <arg name="MODEL_FILE"     value="$(arg MODEL_FILE)" />
     <arg name="COLLADA_FILE"   value="$(arg COLLADA_FILE)"/>
     <arg name="CONF_FILE"      value="$(arg CONF_FILE)" />
-  </include>
+  </iinclude>
 
   <!--                     -->
   <!-- additional settings -->
   <!--                     -->
   <!-- additional ros_bridge -->
-  <include file="$(find jsk_footstep_controller)/launch/hrp2jsk_footcoords.launch" />
+  <iinclude file="$(find jsk_footstep_controller)/launch/hrp2jsk_footcoords.launch" />
 
   <!-- vision setting -->
   <include file="$(find hrpsys_choreonoid_tutorials)/launch/chidori_vision_connect.launch" >
