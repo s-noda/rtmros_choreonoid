@@ -12,18 +12,18 @@ class CHIDORI_HrpsysConfigurator(ChoreonoidHrpsysConfigurator):
             #['tf', "TorqueFilter"],
             ['kf', "KalmanFilter"],
             #['vs', "VirtualForceSensor"],
-            ['rmfo', "RemoveForceSensorLinkOffset"],
-            ['es', "EmergencyStopper"],
-            ['rfu', "ReferenceForceUpdater"],
-            ['ic', "ImpedanceController"],
-            ['abc', "AutoBalancer"],
-            ['st', "Stabilizer"],
+            #['rmfo', "RemoveForceSensorLinkOffset"],
+            #['es', "EmergencyStopper"],
+            #['rfu', "ReferenceForceUpdater"],
+            #['ic', "ImpedanceController"],
+            #['abc', "AutoBalancer"],
+            #['st', "Stabilizer"],
             # ['tc', "TorqueController"],
             # ['te', "ThermoEstimator"],
             # ['tl', "ThermoLimiter"],
-            ['co', "CollisionDetector"],
-            ['hes', "EmergencyStopper"],
-            ['el', "SoftErrorLimiter"],
+            #['co', "CollisionDetector"],
+            #['hes', "EmergencyStopper"],
+            #['el', "SoftErrorLimiter"],
             ['log', "DataLogger"]
             ]
 
@@ -34,10 +34,10 @@ class CHIDORI_HrpsysConfigurator(ChoreonoidHrpsysConfigurator):
 
     def startABSTIMP (self):
         self.rh_svc.setServoErrorLimit('all', 0);
-        self.startAutoBalancer()
+        #self.startAutoBalancer()
         #self.ic_svc.startImpedanceController("larm")
         #self.ic_svc.startImpedanceController("rarm")
-        self.startStabilizer()
+        #self.startStabilizer()
 
 if __name__ == '__main__':
     hcf = CHIDORI_HrpsysConfigurator("CHIDORI")
