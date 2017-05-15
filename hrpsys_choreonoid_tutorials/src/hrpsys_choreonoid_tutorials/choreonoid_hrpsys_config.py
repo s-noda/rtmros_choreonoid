@@ -28,6 +28,8 @@ class ChoreonoidHrpsysConfiguratorOrg(URATAHrpsysConfigurator):
     def setupLogger(self, maxlen=15000):
         HrpsysConfigurator.setupLogger(self, maxlen)
         self.connectLoggerPort(self.rh, 'WAIST') ##
+        if hasattr(self, "rh_choreonoid"):
+            self.connectLoggerPort(self.rh_choreonoid, 'WAIST') ##
         if self.abc:
             self.connectLoggerPort(self.abc, 'rfsensor')
             self.connectLoggerPort(self.abc, 'lfsensor')
