@@ -5,6 +5,7 @@
 //#include <hrpUtil/EigenTypes.h>
 #include <iostream>
 //#include "hrpsys/util/Hrpsys.h"
+#include <eigen3/Eigen/Eigen>
 
 namespace hrp{
   typedef Eigen::Matrix<double, 3, 1> Vector3; // add
