@@ -1015,13 +1015,37 @@ int wait_for_iob_signal()
     return 0;
 }
 
+const size_t extra_motor_states_num = 16;
 size_t length_of_extra_servo_state(int id)
 {
-    return 0;
+    return extra_motor_states_num;
 }
 
 int read_extra_servo_state(int id, int *state)
 {
+    CHECK_JOINT_ID(id);
+
+    assert(sizeof(float) == sizeof(long));
+
+    static float dstate[extra_motor_states_num];
+    dstate[0] = s_shm->motor_temp[0][id];
+    dstate[1] = s_shm->motor_output[0][id];
+    dstate[2] = s_shm->board_vin[0][id];
+    dstate[3] = s_shm->ref_angle[id];
+    dstate[4] = s_shm->cur_angle[id];
+    dstate[5] = s_shm->abs_angle[id];
+    dstate[6] = s_shm->abs_angle[id] - s_shm->cur_angle[id];
+    dstate[7] = s_shm->motor_outer_temp[0][id];
+    dstate[8] = s_shm->ref_angle[id];    //simple_shmに書き込んでいる値
+    dstate[9] = s_shm->board_vdd[0][id];
+    dstate[10] = s_shm->pgain[id];
+    dstate[11] = s_shm->dgain[id];
+    dstate[12] = s_shm->motor_current[0][id];
+    dstate[13] = (float)(s_shm->comm_normal[0][id]);
+    dstate[14] = s_shm->h817_rx_error0[0][id];
+    dstate[15] = s_shm->h817_rx_error1[0][id];
+    memcpy(state, dstate, sizeof(float)*extra_motor_states_num);
+
     return TRUE;
 }
 
