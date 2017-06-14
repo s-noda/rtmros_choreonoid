@@ -177,6 +177,7 @@ configure_file(${PROJECT_SOURCE_DIR}/config/JAXON_RED_LOAD_OBJ.cnoid.in ${PROJEC
 ###
 if (${jsk_models_FOUND})
 configure_file(${PROJECT_SOURCE_DIR}/config/CHIDORI_RH_FLAT.cnoid.in ${PROJECT_SOURCE_DIR}/config/CHIDORI_RH_FLAT.cnoid @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/config/ML1_RH_FLAT.cnoid.in ${PROJECT_SOURCE_DIR}/config/ML1_RH_FLAT.cnoid @ONLY)
 endif()
 
 ###
