@@ -1,7 +1,8 @@
 #!/bin/bash
 
 ### choose choreonoid binary
-choreonoid_exe='choreonoid'
+#choreonoid_exe='choreonoid'
+choreonoid_exe='/usr/local/choreonoid/bin/choreonoid'
 
 if [ "$(pgrep -x ${choreonoid_exe} | wc -l)" != 0 ]; then
     pkill -9 ${choreonoid_exe}

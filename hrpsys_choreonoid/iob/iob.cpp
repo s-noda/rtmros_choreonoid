@@ -16,6 +16,7 @@
 #include <rtm/idl/BasicDataTypeSkel.h>
 
 #include "RobotHardware_choreonoid.h"
+#include "ExtKalmanFilter.h"
 
 static std::vector<double> command;
 static std::vector<double> act_angle;
@@ -55,6 +56,7 @@ static std::vector<std::vector<double> > torque_queue;
 using namespace RTC;
 
 RobotHardware_choreonoid *self_ptr;
+EKFilter *ekfilter_ptr;
 
 //* *//
 static TimedDoubleSeq m_angleIn;
@@ -94,6 +96,14 @@ static unsigned int m_debugLevel;
 
 static int iob_step;
 static int iob_nstep;
+
+/// shared memory
+#include "servo_shm.h"
+static struct servo_shm *s_shm;
+void *set_shared_memory(key_t _key, size_t _size);
+void write_shared_memory ();
+void read_shared_memory ();
+///
 
 #if (defined __APPLE__)
 typedef int clockid_t;
@@ -379,7 +389,7 @@ int write_command_angles(const double *angles)
     for (int i=0; i<number_of_joints(); i++){
         command[i] = angles[i];
     }
-    iob_step = iob_nstep;
+    // iob_step = iob_nstep;
     return TRUE;
 }
 
@@ -585,6 +595,13 @@ int open_iob(void)
     }
 
     std::cerr << "choreonoid IOB is opened" << std::endl;
+
+    ekfilter_ptr = new EKFilter();
+    ekfilter_ptr->resetKalmanFilterState();
+    ekfilter_ptr->setdt(dt);
+
+    s_shm = (struct servo_shm *)set_shared_memory(5555, sizeof(struct servo_shm));
+    s_shm->frame = 0;
     return TRUE;
 }
 void iob_update(void)
@@ -694,6 +711,8 @@ void iob_update(void)
     }
 
     //std::cerr << "tm: " << m_angleIn.tm.sec << " / " << m_angleIn.tm.nsec << std::endl; 
+    write_shared_memory();
+    s_shm->frame++;
 }
 void iob_set_torque_limit(std::vector<double> &vec)
 {
@@ -704,6 +723,7 @@ void iob_set_torque_limit(std::vector<double> &vec)
 }
 void iob_finish(void)
 {
+    read_shared_memory();
     //* *//
     for(int i=0; i<dof; i++) {
       double q = act_angle[i]; // current angle
@@ -718,9 +738,9 @@ void iob_finish(void)
 
       m_torqueOut.data[i] = std::max(std::min(tq, tlimit[i]), -tlimit[i]);
 #if 0
-      if (i == 18) {
+      if (i == 1) {
         std::cerr << "[iob] step = " << iob_step << ", joint = "
-                  << i << ", tq = " << m_torqueOut.data[i] << ", q,qref = (" << q << ", " << q_ref << "), dq,dqref = (" << dq << ", " << dq_ref << "), pd = (" << Pgain[i] << ", " << Dgain[i] << "), tlimit = " << tlimit << std::endl;
+                  << i << ", tq = " << m_torqueOut.data[i] << ", q,qref = (" << q << ", " << q_ref << "), dq,dqref = (" << dq << ", " << dq_ref << "), pd = (" << Pgain[i] << ", " << Dgain[i] << "), tlimit = " << tlimit[i] << std::endl;
       }
 #endif
     }
@@ -767,6 +787,13 @@ static void readGainFile()
     for(int i = 0; i < dof; ++i) {
       command[i] = qold_ref[i] = qold[i] = m_angleIn.data[i];
     }
+
+    if(!!s_shm) {
+      for(int i = 0; i < dof; ++i) {
+        s_shm->ref_angle[i] = command[i];
+      }
+    }
+
 }
 
 int close_iob(void)
@@ -988,13 +1015,37 @@ int wait_for_iob_signal()
     return 0;
 }
 
+const size_t extra_motor_states_num = 16;
 size_t length_of_extra_servo_state(int id)
 {
-    return 0;
+    return extra_motor_states_num;
 }
 
 int read_extra_servo_state(int id, int *state)
 {
+    CHECK_JOINT_ID(id);
+
+    assert(sizeof(float) == sizeof(long));
+
+    static float dstate[extra_motor_states_num];
+    dstate[0] = s_shm->motor_temp[0][id];
+    dstate[1] = s_shm->motor_output[0][id];
+    dstate[2] = s_shm->board_vin[0][id];
+    dstate[3] = s_shm->ref_angle[id];
+    dstate[4] = s_shm->cur_angle[id];
+    dstate[5] = s_shm->abs_angle[id];
+    dstate[6] = s_shm->abs_angle[id] - s_shm->cur_angle[id];
+    dstate[7] = s_shm->motor_outer_temp[0][id];
+    dstate[8] = s_shm->ref_angle[id];    //simple_shmに書き込んでいる値
+    dstate[9] = s_shm->board_vdd[0][id];
+    dstate[10] = s_shm->pgain[id];
+    dstate[11] = s_shm->dgain[id];
+    dstate[12] = s_shm->motor_current[0][id];
+    dstate[13] = (float)(s_shm->comm_normal[0][id]);
+    dstate[14] = s_shm->h817_rx_error0[0][id];
+    dstate[15] = s_shm->h817_rx_error1[0][id];
+    memcpy(state, dstate, sizeof(float)*extra_motor_states_num);
+
     return TRUE;
 }
 
@@ -1045,4 +1096,113 @@ int read_digital_output(char *doutput)
     return FALSE;
 }
 
+//// for shm
+#include <sys/ipc.h>
+#include <sys/types.h>
+#include <sys/shm.h>
+#include <stdio.h>
+#include <errno.h>
 
+void *set_shared_memory(key_t _key, size_t _size)
+{
+  int shm_id;
+  void *ptr;
+  int err;
+  // First, try to allocate more memory than needed.
+  // If this is the first shmget after reboot or
+  // valid size of memory is already allocated,
+  // shmget will succeed.
+  // If the size of memory allocated is less than
+  // _size*2,  shmget will fail.
+  // e.g. Change the servo_shm.h then _size may increase.
+  size_t size = _size * 2;
+  key_t key = _key;
+  shm_id=shmget(key, size, 0666|IPC_CREAT);
+  err = errno;
+  if(shm_id==-1 && err == EINVAL) {
+    // if fail, retry with _size
+    size = _size;
+    shm_id=shmget(key, size, 0666|IPC_CREAT);
+    err = errno;
+  }
+  if(shm_id==-1) {
+    fprintf(stderr, "shmget failed, key=%d, size=%d, errno=%d\n", key, size, err);
+    return NULL;
+  }
+  ptr=(struct shared_data *)shmat(shm_id, (void *)0, 0);
+  if(ptr==(void *)-1) {
+    int err=errno;
+    fprintf(stderr, "shmget failed, key=%d, size=%d, shm_id=%d, errno=%d\n", key, size, shm_id, err);
+    return NULL;
+  }
+  //fprintf(stderr, "shmget ok, size=%d\n", size);
+  return ptr;
+}
+
+void read_shared_memory ()
+{
+  if(s_shm->cmd_lock > 0) {
+    iob_step = s_shm->cmd_lock;
+    s_shm->cmd_lock = 0;
+  }
+  for(int i = 0; i < command.size(); i++) {
+    command[i] = s_shm->ref_angle[i];
+  }
+}
+
+void write_shared_memory ()
+{
+  //
+  for(int i = 0; i < act_angle.size(); i++) {
+    s_shm->cur_angle[i] = act_angle[i];
+  }
+  //
+  for(int i = 0; i < act_torque.size(); i++) {
+    s_shm->motor_current[0][i] = act_torque[i];
+  }
+  //
+  for(int i = 0; i < forces.size(); i++) {
+    for(int j = 0; j < 6; j++) {
+      s_shm->reaction_force[i][j] = forces[i][j];
+    }
+  }
+  //
+  for(int i = 0; i < gyros.size(); i++) {
+    for(int j = 0; j < 3; j++) {
+      s_shm->body_omega[i][j] = gyros[i][j];
+    }
+  }
+  //
+  for(int i = 0; i < accelerometers.size(); i++) {
+    for(int j = 0; j < 3; j++) {
+      s_shm->body_acc[i][j] = accelerometers[i][j];
+    }
+  }
+
+  if(!!ekfilter_ptr) {
+    Eigen::Vector3d gyro(s_shm->body_omega[0][0],
+                         s_shm->body_omega[0][1],
+                         s_shm->body_omega[0][2]);
+    Eigen::Vector3d acc(s_shm->body_acc[0][0],
+                        s_shm->body_acc[0][1],
+                        s_shm->body_acc[0][2]);
+    Eigen::Quaternion<double> q;
+    ekfilter_ptr->main_one(q, acc, gyro);
+#if 0
+    std::cerr << "#f(" << gyro.x();
+    std::cerr << " " << gyro.y();
+    std::cerr << " " << gyro.z() << ") ";
+    std::cerr << "#f(" << acc.x();
+    std::cerr << " " << acc.y();
+    std::cerr << " " << acc.z() << ") ";
+    std::cerr << "#f(" << q.w();
+    std::cerr << " " << q.x();
+    std::cerr << " " << q.y();
+    std::cerr << " " << q.z() << ")" << std::endl;
+#endif
+    s_shm->body_posture[0][0] = q.x();
+    s_shm->body_posture[0][1] = q.y();
+    s_shm->body_posture[0][2] = q.z();
+    s_shm->body_posture[0][3] = q.w();
+  }
+}
