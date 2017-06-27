@@ -32,8 +32,9 @@ class ML1_HrpsysConfigurator(ChoreonoidHrpsysConfigurator, ML1HrpsysConfigurator
             ]
 
     def startABSTIMP (self):
-        self.startAutoBalancer()
-        self.startStabilizer()
+        self.rh_svc.setServoErrorLimit('all', 0);
+        ##self.startAutoBalancer()
+        ##self.startStabilizer()
 
 if __name__ == '__main__':
     hcf = ML1_HrpsysConfigurator()

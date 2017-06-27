@@ -1025,7 +1025,7 @@ int read_extra_servo_state(int id, int *state)
 {
     CHECK_JOINT_ID(id);
 
-    assert(sizeof(float) == sizeof(long));
+    assert(sizeof(float) == sizeof(int));
 
     static float dstate[extra_motor_states_num];
     dstate[0] = s_shm->motor_temp[0][id];
