@@ -389,7 +389,7 @@ int write_command_angles(const double *angles)
     for (int i=0; i<number_of_joints(); i++){
         command[i] = angles[i];
     }
-    // iob_step = iob_nstep;
+    iob_step = iob_nstep;
     return TRUE;
 }
 
@@ -596,9 +596,10 @@ int open_iob(void)
 
     std::cerr << "choreonoid IOB is opened" << std::endl;
 
-    ekfilter_ptr = new EKFilter();
-    ekfilter_ptr->resetKalmanFilterState();
-    ekfilter_ptr->setdt(dt);
+    // ekfilter_ptr = new EKFilter();
+    // ekfilter_ptr->resetKalmanFilterState();
+    // ekfilter_ptr->setdt(dt);
+    ekfilter_ptr = NULL;
 
     s_shm = (struct servo_shm *)set_shared_memory(5555, sizeof(struct servo_shm));
     s_shm->frame = 0;
@@ -723,7 +724,7 @@ void iob_set_torque_limit(std::vector<double> &vec)
 }
 void iob_finish(void)
 {
-    read_shared_memory();
+  // read_shared_memory();
     //* *//
     for(int i=0; i<dof; i++) {
       double q = act_angle[i]; // current angle
@@ -733,7 +734,8 @@ void iob_finish(void)
       double dq_ref = (q_ref - qold_ref[i]) / dt;
       qold[i] = q;
       qold_ref[i] = q_ref;
-      double tq = -(q - q_ref) * Pgain[i] - (dq - dq_ref) * Dgain[i];
+      // double tq = -(q - q_ref) * Pgain[i] - (dq - dq_ref) * Dgain[i];
+      double tq = (q_ref - q) * Pgain[i] - dq * Dgain[i];
       //double tlimit = m_robot->joint(i)->climit * m_robot->joint(i)->gearRatio * m_robot->joint(i)->torqueConst;
 
       m_torqueOut.data[i] = std::max(std::min(tq, tlimit[i]), -tlimit[i]);
@@ -1200,9 +1202,9 @@ void write_shared_memory ()
     std::cerr << " " << q.y();
     std::cerr << " " << q.z() << ")" << std::endl;
 #endif
-    s_shm->body_posture[0][0] = q.x();
-    s_shm->body_posture[0][1] = q.y();
-    s_shm->body_posture[0][2] = q.z();
-    s_shm->body_posture[0][3] = q.w();
+    s_shm->body_posture[0][0] = -q.y();
+    s_shm->body_posture[0][1] = q.x();
+    s_shm->body_posture[0][2] = q.w();
+    s_shm->body_posture[0][3] = -q.z();
   }
 }
