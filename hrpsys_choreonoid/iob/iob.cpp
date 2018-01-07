@@ -1157,6 +1157,7 @@ void write_shared_memory ()
   //
   for(int i = 0; i < act_angle.size(); i++) {
     s_shm->cur_angle[i] = act_angle[i];
+    s_shm->abs_angle[i] = act_angle[i];
   }
   //
   for(int i = 0; i < act_torque.size(); i++) {
